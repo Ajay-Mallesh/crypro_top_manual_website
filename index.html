@@ -26,6 +26,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: var(--text-main);
             display: flex;
+            flex-wrap: wrap;
             background-color: #ffffff;
             line-height: 1.7;
             overflow-x: hidden;
@@ -232,6 +233,172 @@
             white-space: pre-wrap; 
             word-wrap: break-word;
         }
+		.footer {
+    width: 100%;
+    margin: 0;
+    margin-top: 4rem;
+    padding: 3rem 4rem;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-top: 3px solid var(--primary-color);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.95rem;
+    color: #e2e8f0;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    position: relative;
+    left: 0;
+}
+
+.footer-top {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 8rem;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-left {
+    flex: 0 0 auto;
+    text-align: left;
+    min-width: auto;
+}
+
+.footer-left div {
+    margin: 0.8rem 0;
+    line-height: 1.6;
+}
+
+.footer-left div:first-child {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    margin-bottom: 0.8rem;
+    letter-spacing: 1px;
+}
+
+.footer-left div:nth-child(2) {
+    font-size: 0.95rem;
+    color: #cbd5e1;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.footer-left div:nth-child(3) {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 0;
+}
+
+.footer-right {
+    flex: 0 0 auto;
+    text-align: left;
+    padding-left: 3rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 280px;
+}
+
+.contact-header {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    margin-bottom: 1.5rem;
+    letter-spacing: 1px;
+}
+
+.contact-item {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    margin: 1rem 0;
+    line-height: 1.6;
+}
+
+.footer-right a {
+    color: var(--secondary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+    font-weight: 500;
+}
+
+.footer-right a:hover {
+    color: #0284c7;
+    text-decoration: underline;
+}
+
+.footer-bottom {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+}
+
+.footer-bottom div {
+    margin: 0.6rem 0;
+    line-height: 1.6;
+}
+
+/* When sidebar is hidden/expanded */
+.sidebar.hidden ~ main ~ .footer,
+.sidebar.hidden ~ .footer {
+    margin-left: 0;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .footer {
+        margin-left: 0;
+        padding: 2.5rem 2rem;
+        font-size: 0.9rem;
+    }
+
+    .footer-top {
+        flex-direction: column;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+    }
+    
+    .footer-left {
+        text-align: left;
+    }
+    
+    .footer-left div:first-child {
+        font-size: 1.1rem;
+    }
+    
+    .footer-left div:nth-child(2) {
+        font-size: 0.9rem;
+    }
+    
+    .footer-left div:nth-child(3) {
+        font-size: 0.8rem;
+    }
+
+    .footer-right {
+        padding-left: 0;
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 1.5rem;
+        min-width: auto;
+    }
+
+    .contact-header {
+        font-size: 1rem;
+    }
+
+    .contact-item {
+        font-size: 0.85rem;
+    }
+
+    .footer-bottom {
+        font-size: 0.8rem;
+    }
+
+    .footer-bottom div {
+        margin: 0.5rem 0;
+    }
+}
 
         /* Disclaimer Box */
         .disclaimer {
@@ -752,24 +919,24 @@ compile_ultra -scan -timing_high_effort_script
         <p>Analyzes massive current surges causing the local supply voltage to sag according to Ohm’s Law ($V_{drop} = I \times R$).</p>
 
         <h3>13.2 Exporting the Design</h3>
-<pre class="code-block"><code># Export the physical layout
-write_def -version 5.8 -routing -all_blocks reports/crypto_top.def
+		<pre class="code-block"><code># Export the physical layout
+		write_def -version 5.8 -routing -all_blocks reports/crypto_top.def
 
-# Export the parasitic RC data
-write_parasitics -format SPEF -output reports/crypto_top.spef
-</code></pre>
+		# Export the parasitic RC data
+		write_parasitics -format SPEF -output reports/crypto_top.spef
+		</code></pre>
 
-        <h3>13.6 Fixes for IR-Drop</h3>
-        <p>Adding Decap Cells, Thickening Local Straps, and Spreading the Logic.</p>
+				<h3>13.6 Fixes for IR-Drop</h3>
+				<p>Adding Decap Cells, Thickening Local Straps, and Spreading the Logic.</p>
 
-        <h2 id="ch14">Chapter 14: Hard Macro Conversion</h2>
-        <p>Hardening seals the internal standard cells into a single black-box component for SoC integration.</p>
-<pre class="code-block"><code># Open routed block
-open_block crypto_top_routed
+				<h2 id="ch14">Chapter 14: Hard Macro Conversion</h2>
+				<p>Hardening seals the internal standard cells into a single black-box component for SoC integration.</p>
+		<pre class="code-block"><code># Open routed block
+		open_block crypto_top_routed
 
-# Create abstract view
-create_abstract -read_only
-</code></pre>
+		# Create abstract view
+		create_abstract -read_only
+		</code></pre>
         <p>Deliverables include GDSII, LEF, Timing Models (.lib/.db), Verilog Shell, and UPF.</p>
 
         <hr>
@@ -1316,5 +1483,32 @@ create_abstract -read_only
             mainContent.classList.add('expanded');
         }
     </script>
+	<footer class="footer">
+        <div class="footer-top">
+            <div class="footer-left">
+                <div>Cryto_top Manual</div>
+                <div>Designed by AjayMallesh ©️</div>
+                <div>Cryto_top Manual | Ver 2.0.0 | 24/05/2026</div>
+            </div>
+            <div class="footer-right">
+                <div class="contact-header">Contact</div>
+                <div class="contact-item">📧 <a href="mailto:ajaynew96326@gmail.com">ajaynew96326@gmail.com</a></div>
+                <div class="contact-item">💼 <a href="https://www.linkedin.com/in/ajaymallesh" target="_blank">www.linkedin.com/in/ajaymallesh</a></div>
+                <div class="contact-item">🐙 <a href="https://github.com/Ajay-Mallesh" target="_blank">https://github.com/Ajay-Mallesh</a></div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div>
+                ವಿನ್ಯಾಸ : ಅಜಯ್ ಮಲ್ಲೇಶ್ ©️ | ಸಿರಿಗನ್ನಡಂ ಗೆಲ್ಗೆ ಸಿರಿಗನ್ನಡಂ ಬಾಳ್ಗೆ ❤️💛 |
+            </div>
+            <div>
+                | ಕರ್ನಾಟಕ ❤️💛 | Karnataka ❤️ |
+            </div>
+            <div>
+                | India | ಭಾರತ ❤️ |
+            </div>
+        </div>
+    </footer>
+    </footer>
 </body>
 </html>
