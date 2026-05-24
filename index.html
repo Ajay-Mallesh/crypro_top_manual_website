@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Voltage Crypto Core: RTL to GDSII</title>
+    <style>
+        :root {
+            --primary-color: #0284c7;
+            --secondary-color: #0ea5e9;
+            --bg-color: #f8fafc;
+            --text-main: #334155;
+            --text-light: #64748b;
+            --border-color: #e2e8f0;
+            --code-bg: #f1f5f9;
+            --sidebar-width: 340px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+            display: flex;
+            background-color: #ffffff;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            background-color: var(--bg-color);
+            padding: 2rem 1.5rem 2rem 1.5rem;
+            border-right: 1px solid var(--border-color);
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        /* =========================================
+           FIXED: Rotated Tab Button (Left Edge)
+        ========================================= */
+        .toggle-btn {
+            position: fixed;
+            top: 40%;
+            left: 0;
+            z-index: 1000;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 25px 10px; /* Longer top/bottom, narrow left/right */
+            cursor: pointer;
+            border-radius: 8px 0 0 8px; /* Creates a rounded right edge after 180deg rotation */
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            box-shadow: -3px 0 10px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s;
+            
+            /* Rotates the text to read Bottom-to-Top (Rotated left 90 degrees) */
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+        }
+        
+        .toggle-btn:hover {
+            background-color: #0369a1;
+        }
+
+        /* Table of Contents Accordion */
+        .sidebar h3 {
+            font-size: 1.2rem;
+            color: #0f172a;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .sidebar a {
+            display: block;
+            text-decoration: none;
+            color: var(--text-main);
+            padding: 0.4rem 0;
+            font-size: 0.95rem;
+            transition: color 0.2s ease;
+        }
+
+        .sidebar a:hover {
+            color: var(--primary-color);
+        }
+
+        details {
+            margin-bottom: 0.5rem;
+        }
+
+        details summary {
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.4rem 0;
+            color: #0f172a;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        details summary::before {
+            content: '▶';
+            font-size: 0.7rem;
+            margin-right: 10px;
+            color: var(--primary-color);
+            transition: transform 0.2s ease;
+        }
+
+        details[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .sub-link-container {
+            margin-left: 1.5rem;
+            border-left: 1px solid var(--border-color);
+            padding-left: 10px;
+        }
+
+        .sidebar .sub-link {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            padding: 0.25rem 0;
+        }
+
+        /* =========================================
+           FIXED: Main Content Padding (No Overlap)
+        ========================================= */
+        .content {
+            margin-left: var(--sidebar-width);
+            padding: 4rem 5rem;
+            max-width: 1100px;
+            transition: margin-left 0.3s ease, padding-left 0.3s ease;
+            width: 100%;
+        }
+
+        .content.expanded {
+            margin-left: 0;
+            /* Extra left padding pushes text far away from the button */
+            padding-left: 6.5rem; 
+        }
+
+        /* Typography */
+        h1, h2, h3, h4 {
+            color: #0f172a;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        h1 { font-size: 2.5rem; border-bottom: 3px solid var(--primary-color); padding-bottom: 0.5rem; }
+        h2 { font-size: 1.8rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; }
+        h3 { font-size: 1.3rem; color: var(--primary-color); }
+        
+        p { margin-bottom: 1.2rem; }
+        ul, ol { margin-bottom: 1.2rem; padding-left: 2rem; }
+        li { margin-bottom: 0.5rem; }
+
+        /* Cover Page Styling */
+        .cover-page {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--bg-color);
+            border-radius: 12px;
+            margin-bottom: 3rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .cover-page h1 { border: none; margin: 0 0 1rem 0; font-size: 2.8rem; }
+        .cover-page h2 { border: none; margin: 0 0 0.5rem 0; font-size: 1.5rem; color: var(--text-light); }
+        .cover-page p { margin-bottom: 0.5rem; }
+        .quote { font-style: italic; color: var(--primary-color); margin-top: 2rem; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: #fff;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--bg-color);
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        /* Code Blocks */
+        pre.code-block {
+            background-color: var(--code-bg);
+            border-left: 4px solid var(--primary-color);
+            padding: 1.2rem;
+            margin: 1.5rem 0;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            border-radius: 0 8px 8px 0;
+            white-space: pre-wrap; 
+            word-wrap: break-word;
+        }
+
+        /* Disclaimer Box */
+        .disclaimer {
+            background-color: #fff1f2;
+            border: 1px solid #fecdd3;
+            border-left: 4px solid #e11d48;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Scenario Cards */
+        .scenario {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+        .scenario strong { color: var(--primary-color); }
+
+        /* Responsive Design */
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.show-mobile { transform: translateX(0); }
+            /* Mobile padding guarantees text clears the button */
+            .content { margin-left: 0; padding: 4rem 2rem 4rem 5rem; } 
+            .content.expanded { margin-left: 0; padding-left: 5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <button class="toggle-btn" id="toggleBtn">
+        ☰ Index
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <h3>Table of Contents</h3>
+        
+        <details>
+            <summary>Project Introduction</summary>
+            <div class="sub-link-container">
+                <a href="#intro" class="sub-link">Overview</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 1: Files & Directories</summary>
+            <div class="sub-link-container">
+                <a href="#ch1" class="sub-link">1.1 Directory creations</a>
+                <a href="#ch1" class="sub-link">1.2 Files creations</a>
+                <a href="#ch1" class="sub-link">1.3 Automated Script</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 2: RTL Implementation</summary>
+            <div class="sub-link-container">
+                <a href="#ch2" class="sub-link">2.1 RTL Logic</a>
+                <a href="#ch2" class="sub-link">2.2 Level Shifters</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 3: Synthesis</summary>
+            <div class="sub-link-container">
+                <a href="#ch3" class="sub-link">3.1 What is Synthesis?</a>
+                <a href="#ch3" class="sub-link">3.2 Synthesis used in this design</a>
+                <a href="#ch3" class="sub-link">3.3 Inputs required</a>
+                <a href="#ch3" class="sub-link">3.4 Synthesis script file</a>
+                <a href="#ch3" class="sub-link">3.5 Generated output files</a>
+                <a href="#ch3" class="sub-link">3.6 Reports & Sanity Checks</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 4: Floorplan</summary>
+            <div class="sub-link-container">
+                <a href="#ch4" class="sub-link">4.1 creating ndm (Refer pd_flow.tcl)</a>
+                <a href="#ch4" class="sub-link">4.2 Initialize Floorplan</a>
+                <a href="#ch4" class="sub-link">4.3 Sanity checks</a>
+			</div>
+        </details>
+
+        <details>
+            <summary>Chapter 5: Port Placements</summary>
+            <div class="sub-link-container">
+                <a href="#ch5" class="sub-link">5.1 Block Pin Constraints - Placing ports</a>
+                <a href="#ch5" class="sub-link">5.2 Sanity checks</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 6: Multi-voltage Design</summary>
+            <div class="sub-link-container">
+                <a href="#ch6" class="sub-link">6.1 UPF</a>
+                <a href="#ch6" class="sub-link">6.2 create voltage area</a>
+                <a href="#ch6" class="sub-link">6.3 commit UPF</a>
+                <a href="#ch6" class="sub-link">6.4 Sanity checks</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 7: Power Delivery</summary>
+            <div class="sub-link-container">
+                <a href="#ch7" class="sub-link">7.1 Create Tap and bound cells</a>
+                <a href="#ch7" class="sub-link">7.2 Sanity checks</a>
+                <a href="#ch7" class="sub-link">7.3 creating PG nets</a>
+                <a href="#ch7" class="sub-link">7.4 Sanity checks</a>
+				<a href="#ch7" class="sub-link">7.5 Automated script for Floorplan to PowerPlan</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 8: Congestion</summary>
+            <div class="sub-link-container">
+                <a href="#ch8" class="sub-link">8.1 create_placement -floorplan</a>
+                <a href="#ch8" class="sub-link">8.2 congestion reports</a>
+                <a href="#ch8" class="sub-link">8.3 reset_placement</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 9: Placement</summary>
+            <div class="sub-link-container">
+                <a href="#ch9" class="sub-link">9.1 Source placement.tcl</a>
+                <a href="#ch9" class="sub-link">9.2 Source mcmm_setup file - modes & scenarios</a>
+                <a href="#ch9" class="sub-link">9.3 Sanity checks</a>
+                <a href="#ch9" class="sub-link">9.4 Reports</a>
+                <a href="#ch9" class="sub-link">9.5 Fixes for max trans</a>
+                <a href="#ch9" class="sub-link">9.6 Fixes for max cap</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 10: Clock Tree Synthesis</summary>
+            <div class="sub-link-container">
+                <a href="#ch10" class="sub-link">10.1 Type of CTS used - Fish Bone</a>
+                <a href="#ch10" class="sub-link">10.2 cts_script.tcl</a>
+                <a href="#ch10" class="sub-link">10.3 Issues / violations</a>
+                <a href="#ch10" class="sub-link">10.4 Fixes for Violations</a>
+                <a href="#ch10" class="sub-link">10.5 Fixes for Hold / setup</a>
+                <a href="#ch10" class="sub-link">10.6 Sanity checks</a>
+                <a href="#ch10" class="sub-link">10.7 Reports</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 11: Routing</summary>
+            <div class="sub-link-container">
+                <a href="#ch11" class="sub-link">11.1 route.tcl</a>
+                <a href="#ch11" class="sub-link">11.2 Sanity checks</a>
+                <a href="#ch11" class="sub-link">11.3 Reports</a>
+                <a href="#ch11" class="sub-link">11.4 Antenna Rule</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 12: Signoff</summary>
+            <div class="sub-link-container">
+                <a href="#ch12" class="sub-link">12.1 signoff script</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 13: Advance IR Drop</summary>
+            <div class="sub-link-container">
+                <a href="#ch13" class="sub-link">13.1 Physics/Theory</a>
+                <a href="#ch13" class="sub-link">13.2 Exporting Design</a>
+                <a href="#ch13" class="sub-link">13.3 Files / Inputs Required for Signoff</a>
+                <a href="#ch13" class="sub-link">13.4 Validating the VDDL Topology</a>
+                <a href="#ch13" class="sub-link">13.5 Heatmaps & Signoff Reports</a>
+                <a href="#ch13" class="sub-link">13.6 Fixes for IR-Drop</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Chapter 14: Hard Macro</summary>
+            <div class="sub-link-container">
+                <a href="#ch14" class="sub-link">14.1 Physical Abstraction</a>
+                <a href="#ch14" class="sub-link">14.2 Timing Abstraction</a>
+                <a href="#ch14" class="sub-link">14.3 Multi-Voltage & Power Pin Promotion</a>
+                <a href="#ch14" class="sub-link">14.4 Handoff Files</a>
+            </div>
+        </details>
+
+        <details>
+            <summary>Appendix A: Scenarios</summary>
+            <div class="sub-link-container">
+                <a href="#appA" class="sub-link">Section 1: Floorplanning</a>
+                <a href="#appA-sec2" class="sub-link">Section 2: Placement & Congestion</a>
+                <a href="#appA-sec3" class="sub-link">Section 3: CTS</a>
+                <a href="#appA-sec4" class="sub-link">Section 4: Routing & DRC</a>
+                <a href="#appA-sec5" class="sub-link">Section 5: Timing</a>
+                <a href="#appA-sec6" class="sub-link">Section 6: Adv. Timing</a>
+                <a href="#appA-sec7" class="sub-link">Section 7: Adv. CTS</a>
+                <a href="#appA-sec8" class="sub-link">Section 8: UPF</a>
+                <a href="#appA-sec9" class="sub-link">Section 9: Adv Routing</a>
+                <a href="#appA-sec10" class="sub-link">Section 10: Signoff</a>
+            </div>
+        </details>
+    </nav>
+
+    <main class="content" id="mainContent">
+
+        <div class="cover-page">
+            <h1>Multi-Voltage Crypto Core: RTL to GDSII (Vol. 1)</h1>
+            <h2>32nm Multi-Voltage ASIC Design Reference</h2>
+            <p>(0.95V / 0.75V Dual Supply Physical Design Methodology)</p>
+            <p><strong>The Complete Implementation Handbook</strong></p>
+            <br>
+            <p><strong>Author:</strong> Ajay Mallesh</p>
+            <p><strong>Reviewer:</strong> Gemini Pro 3.1 & Ajay Mallesh</p>
+            <p><strong>Version:</strong> Version 2.0 (2026)</p>
+            <p><strong>Date:</strong> 23/05/2026</p>
+            <p class="quote">“This project is generated with Gemini Pro 3.1 and crafted by Ajay Mallesh with ❤️.”</p>
+        </div>
+
+        <h2 id="tech-focus">Technology Focus</h2>
+        <table>
+            <tr><th>Parameter</th><th>Specification</th></tr>
+            <tr><td>1. Technology Node</td><td>32nm CMOS</td></tr>
+            <tr><td>2. Design Type</td><td>Multi-Voltage ASIC</td></tr>
+            <tr><td>3. Core Type</td><td>Crypto Accelerator</td></tr>
+            <tr><td>4. Instance Count</td><td>~600K Instances (Pre-Synthesis)</td></tr>
+            <tr><td>5. Voltage Domains</td><td>0.95V / 0.75V</td></tr>
+            <tr><td>6. Flow Style</td><td>RTL → GDSII</td></tr>
+            <tr><td>7. Primary Tools</td><td>Synopsys / Cadence</td></tr>
+            <tr><td>8. Timing Methodology</td><td>MCMM</td></tr>
+            <tr><td>9. Signoff Style</td><td>PrimeTime / StarRC</td></tr>
+            <tr><td>10. Power Strategy</td><td>Multi-Domain Mesh PDN</td></tr>
+            <tr><td>11. Clocking</td><td>CTS + NDR</td></tr>
+            <tr><td>12. Target Audience</td><td>Physical Design Engineers / ASIC Architects</td></tr>
+        </table>
+
+        <p><strong>Copyright Notice:</strong><br>
+        © 2026 Ajay Mallesh. This project is open-source and released for educational and non-commercial community use. You are free to use, modify and distribute this project in accordance with the project license.<br>
+        Author: Ajay Mallesh | Email: ajaymalavalli912@gmail.com | LinkedIn: www.linkedin.com/in/ajaymallesh</p>
+
+        <div class="disclaimer">
+            <h3>Legal Disclaimer</h3>
+            <p>The methodologies, TCL examples, UPF constructs, synthesis flows, timing constraints and physical implementation strategies described in this document are intended exclusively for educational and research purposes.</p>
+            <p>Tool commands and flows may vary depending on: tool version, process node, foundry NDA constraints, technology LEF/DEF structure, extraction deck version, signoff correlation methodology, and EDA vendor implementation changes.</p>
+            <p>The author assumes no responsibility for: silicon failure, timing closure loss, LVS/DRC violations, power collapse, EM degradation, tape-out delay, or fabrication loss arising from improper application of the concepts described herein.</p>
+        </div>
+
+        <hr>
+
+        <h2 id="intro">Project Introduction & Overview</h2>
+        <h3>Multi-Voltage Crypto Core Architecture</h3>
+        <p>The <code>crypto_top</code> project is a high-performance ASIC cryptographic accelerator designed using 32nm CMOS technology. It contains around 30K standard cells.</p>
+        <p>Cryptographic operations such as AES-256 and SHA-3 require high-speed computation, while control logic and peripheral interfaces operate at lower speeds. To reduce power consumption and meet SoC thermal constraints, the design uses a dual-voltage architecture based on voltage scaling.</p>
+        <p>The design is divided into two voltage domains:</p>
+        <ul>
+            <li><strong>High-Performance Domain (0.95V / VDD):</strong> This domain contains the main datapath and computational engines. It operates at 0.95V to achieve maximum performance and timing closure using <code>saed32rvt_ss0p95v125c.db</code> libraries.</li>
+            <li><strong>Low-Power Domain (0.75V / VDDL):</strong> This domain includes control logic and low-speed peripherals. Operating at 0.75V significantly reduces dynamic power consumption. It uses <code>saed32rvt_ss0p75v125c.db</code> libraries optimized for low power.</li>
+        </ul>
+
+        <h3>Physical Design Challenges</h3>
+        <p>The multi-voltage architecture introduces several backend design complexities, including:</p>
+        <ul>
+            <li>UPF-based power intent integration</li>
+            <li>Level shifters for signals crossing voltage domains</li>
+            <li>Dedicated voltage areas and power planning</li>
+            <li>MCMM timing analysis across multiple operating conditions</li>
+        </ul>
+        
+        <h3>Tools</h3>
+        <ul>
+            <li>Synopsys Design Compiler</li>
+            <li>Synopsys ICC2</li>
+        </ul>
+
+        <h2 id="ch1">Chapter 1: Files and Directories (Linux)</h2>
+        <h3>1.1. Directory creations</h3>
+        <p>Command: <code>mkdir crypto_top</code><br><code>cd crypto_top/</code></p>
+        
+        <h3>1.2. Files creations</h3>
+        <p>Command: <code>gvim &lt;file_name&gt;</code>, <code>cat &lt;file_name&gt;</code>, <code>nano &lt;file_name&gt;</code></p>
+        
+        <h3>1.3. Automated Script</h3>
+        <p><code>source setup_env.tcl</code><br>
+        <em>** This script will create all the required directories</em></p>
+
+        <h2 id="ch2">Chapter 2: RTL Implementation</h2>
+        <h3>2.1 RTL File Implementation Logic</h3>
+        <p>For a multi-voltage design, the RTL logic must be cleanly partitioned into distinct hierarchical blocks based on their target voltage. In this <code>crypto_top</code> design, the architecture is split into two main sections:</p>
+        <ol>
+            <li><strong>The High-Performance Control Block:</strong> Runs on the main 0.95V (VDD) supply. This handles the fast I/O interfaces, main state machines and clock generation.</li>
+            <li><strong>The Low-Power Crypto Engine:</strong> Runs on the scaled 0.75V (VDDL) supply. This block performs the heavy, latency-tolerant encryption math.</li>
+        </ol>
+        <p>The top-level Verilog file (<code>crypto_top.v</code>) simply acts as a wrapper that wires these two blocks together.</p>
+
+        <h3>2.2 Level Shifters Declarations</h3>
+        <p>When a signal travels from the 0.75V (VDDL) domain back to the 0.95V (VDD) domain, a Low-to-High Level Shifter is required. Without it, the 0.75V "High" signal won't fully turn off the 0.95V PMOS transistors, causing a short circuit (crowbar current).</p>
+        <p><strong>How they are declared:</strong> In modern physical design, we do not hardcode level shifters into the RTL. The RTL just connects the wires normally. Instead, level shifters are declared and automatically inserted using the UPF (Unified Power Format) file during synthesis.</p>
+
+        <h2 id="ch3">Chapter 3: Synthesis</h2>
+        <h3>3.1 What is Synthesis?</h3>
+        <p>Synthesis is the process of translating human-readable RTL code (like Verilog) into a technology-mapped gate-level netlist. The tool reads the behavioral logic and converts it into physical logic gates (AND, OR, Flip-Flops) available in the target 32nm standard cell library, while trying to meet timing and power requirements.</p>
+        
+        <h4>3.1.1 Types of Synthesis</h4>
+        <ul>
+            <li><strong>Logical Synthesis:</strong> Traditional synthesis that assumes zero wire delays. It only looks at the logic gates.</li>
+            <li><strong>Physical Synthesis (Topographical):</strong> Advanced synthesis that predicts physical layout (placement and wire lengths) to give much more accurate timing and power estimates before the actual Physical Design phase.</li>
+        </ul>
+
+        <h3>3.2 Synthesis used in this design</h3>
+        <p>For this <code>crypto_top</code> core, we use Physical (Topographical) Synthesis using Synopsys Design Compiler (DC). Because this is a dual-rail design, the synthesis tool must also be Multi-Voltage Aware, meaning it reads our power intent and automatically inserts the required level shifters between the 0.95V and 0.75V domains.</p>
+
+        <h3>3.3 Files / Inputs required for Synthesis</h3>
+        <ul>
+            <li><strong>3.3.1 RTL:</strong> The verified Verilog files (e.g., <code>crypto_top.v</code>, <code>high_speed_ctrl.v</code>, <code>crypto_engine_lp.v</code>) containing the design logic.</li>
+            <li><strong>3.3.2 .lib:</strong> The logic libraries provided by the foundry. Because we have two voltage domains, we must load libraries for both the 0.95V standard cells and the 0.75V (VDDL) standard cells, usually at worst-case timing corners.</li>
+            <li><strong>3.3.3 UPF:</strong> The IEEE 1801 Unified Power Format file. This tells the tool where the VDD and VDDL domains are and rules for inserting level shifters.</li>
+            <li><strong>3.3.4 SDC:</strong> Synopsys Design Constraints. This file defines the clock frequencies, input/output delays and false paths.</li>
+            <li><strong>3.3.5 Scanchains:</strong> Design for Testability (DFT) setup files. These tell the tool how to stitch the flip-flops together into long "scan chains" so the chip can be tested for manufacturing defects after fabrication.</li>
+        </ul>
+
+        <h3 id="ch3-4">3.4 Synthesis script file</h3>
+        <p>A simplified look at the main commands inside the synthesis script:</p>
+<pre class="code-block"><code># 1. Read the design
+analyze -format verilog [./inputs/crypto_top.v]
+elaborate crypto_top
+
+# 2. Load constraints and power intent
+source ./inputs/crypto_top.sdc
+load_upf ./inputs/crypto_top.upf
+
+# 3. Stitch scan chains for DFT
+insert_dft
+
+# 4. Compile the design into 32nm gates
+compile_ultra -scan -timing_high_effort_script
+</code></pre>
+
+        <h3>3.5 Generated output files</h3>
+        <ul>
+            <li><strong>3.5.1 Golden Netlist:</strong> “.v” file containing only 32nm standard cell instances and their wire connections. All abstract RTL is gone.</li>
+            <li><strong>3.5.2 UPF:</strong> An updated “.upf” file. The tool updates the original UPF to include the exact names and locations of the level shifters it inserted.</li>
+            <li><strong>3.5.3 Scandef:</strong> A .def file containing the scan chain trace. This ensures the PnR tool (ICC2) knows how the flip-flops are chained together and can optimize their placement.</li>
+            <li><strong>3.5.6 SDC:</strong> The tool generates a forward-annotated SDC file. <em>Note: It is generally not recommended to use this generated SDC for physical design.</em></li>
+        </ul>
+
+        <h3>3.6 Reports</h3>
+        <ul>
+            <li><strong>3.6.1 report_timing:</strong> Checks the critical paths. Setup timing should be met here. Hold timing is ignored at this stage.</li>
+            <li><strong>3.6.2 report_area:</strong> Checks the total cell count and silicon footprint.</li>
+            <li><strong>3.6.3 report_qor:</strong> The Quality of Results report.</li>
+        </ul>
+
+        <h3>3.7 Sanity checks</h3>
+        <ul>
+            <li><strong>3.7.1 check_design:</strong> Scans the netlist for logical errors (zero floating inputs, zero multi-driven nets).</li>
+            <li><strong>3.7.2 check_mv_design:</strong> Scans the multi-voltage architecture to ensure level shifters are successfully inserted.</li>
+        </ul>
+
+        <h3>3.8 Automated Script for synthesis</h3>
+        <p><code>source ./scripts/dc_compile.tcl</code></p>
+
+        <h2 id="ch4">Chapter 4: Floorplan</h2>
+        <h3>4.1 creating ndm</h3>
+        <p>Before physical design can begin, the tool needs a unified database containing both logical timing and physical layout information. In Synopsys ICC2, this is the New Data Model (NDM). We create the NDM by merging the synthesized .v netlist, the .db timing libraries and the physical .lef/FRAM files.</p>
+        
+        <h3>4.2 Initialize Floorplan</h3>
+        <ul>
+            <li><strong>4.2.1 Read Netlist:</strong> The tool loads the structural netlist mapping logic to physical shapes.</li>
+            <li><strong>4.2.2 Create Core and Die Area:</strong> We define the overall chip dimensions with a target utilization of roughly 75%.</li>
+        </ul>
+
+        <h3>4.3 Sanity checks</h3>
+        <p><strong>4.3.1 check_floorplan:</strong> Validates that the core area is legally defined and boundaries are closed.</p>
+
+        <h2 id="ch5">Chapter 5: Port Placements</h2>
+        <h3>5.1 Block Pin Constraints - Placing ports</h3>
+        <p>Pin constraints define exactly which edge (top, bottom, left, right) and which metal layers the ports should use, optimizing the dataflow into the high-speed control block.</p>
+        
+        <h3>5.2 Sanity checks</h3>
+        <ul>
+            <li><strong>5.2.1 check_pin_placement:</strong> Confirms all pins are successfully dropped on the boundary.</li>
+            <li><strong>5.2.2 check_pre_pin_placement:</strong> Verifies the pin constraint file is syntactically valid.</li>
+        </ul>
+
+        <h2 id="ch6">Chapter 6: Multi-voltage Design</h2>
+        <h3>6.1 UPF</h3>
+        <p>We read the .upf file outputted by Synthesis into ICC2.</p>
+        
+        <h3>6.2 create voltage area</h3>
+        <p>We physically draw the <code>PD_LOW_POWER</code> region on the floorplan canvas.</p>
+        
+        <h3>6.3 commit UPF</h3>
+        <p>This tells ICC2 to finalize the power intent, mapping logical UPF definitions to the physical area and creating actual power nets (VDD and VDDL).</p>
+        
+        <h3>6.4 Sanity checks</h3>
+        <ul>
+            <li><strong>6.4.1 check_mv_design:</strong> Validates the physical floorplan correctly supports the multi-voltage intent.</li>
+            <li><strong>6.4.2 report_mv_cells:</strong> Generates a list of all level shifters and isolation cells.</li>
+            <li><strong>6.4.3 report_mv_path -level_shifter -all_path:</strong> Traces wires crossing domains to guarantee level shifters sit between them.</li>
+        </ul>
+
+        <h2 id="ch7">Chapter 7: Power Delivery Network</h2>
+        <h3>7.1 Create Tap and bound cells</h3>
+        <ul>
+            <li><strong>Tap Cells:</strong> Placed at regular intervals to tie the silicon substrate to ground and n-wells to power, preventing latch-up.</li>
+            <li><strong>Boundary Cells (Endcaps):</strong> Placed at the end of every standard cell row to protect logic gates from manufacturing damage.</li>
+        </ul>
+
+        <h3>7.2 Sanity checks</h3>
+        <p><strong>7.2.1 check_boundary_cells:</strong> Ensures all rows are capped.</p>
+
+        <h3>7.3 creating PG nets</h3>
+        <p>We construct the power grids (VDD, VDDL and VSS). For the low-power crypto region, the VDDL mesh is generated ensuring it does not break before the inner guard band; the VDDL shapes must connect continuously edge-to-edge.</p>
+
+        <h3>7.4 Sanity checks</h3>
+        <ul>
+            <li><strong>7.4.1 check_pg_connectivity:</strong> Verifies the macro-level power grid is fully connected.</li>
+            <li><strong>7.4.2 check_pg_missing_vias:</strong> Ensures vertical and horizontal power straps have vias.</li>
+            <li><strong>7.4.3 check_pg_drc:</strong> Checks thick power metal routes for spacing/width DRC violations.</li>
+        </ul>
+
+        <h3>7.5 Automated script for Floorplan to PowerPlan</h3>
+        <p><code>source ./scripts/pd_flow.tcl</code></p>
+
+        <h2 id="ch8">Chapter 8: Congestion checks</h2>
+        <h3>8.1 create_placement -floorplan</h3>
+        <p>Performs a fast, coarse placement of the ~30k standard cells to check how crowded the canvas gets.</p>
+        
+        <h3>8.2 congestion reports</h3>
+        <p><strong>8.2.1 report_congestion -rerun_global_router:</strong> Triggers the global routing engine to do a rough estimate of wire routing to identify "hotspots."</p>
+
+        <h3>8.3 reset_placement</h3>
+        <p>Rips up the temporary fast placement, leaving behind the clean floorplan for the actual timing-driven placement.</p>
+
+        <h2 id="ch9">Chapter 9: Placement</h2>
+        <h3>9.1 Source ./scripts/placement.tcl</h3>
+        <p>Executes global placement, legalizes cells, and performs High-Effort logic optimization to fix setup timing.</p>
+
+        <h3>9.2 Source mcmm_setup file</h3>
+		<p>Before optimization, Multi-Corner Multi-Mode (MCMM) constraints must be loaded to balance timing paths across different PVT corners.</p>
+
+		<h4> - source ./inputs/constraints/mcmm_setup.tcl </h4>
+
+		<p><strong>Note:</strong> make sure to add this path properly in mcmm_setup.tcl</p>
+
+		<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;o source ./inputs/constraints/mcmm_corners_modes.tcl</p>
+
+		<p>*** Make sure all paths of mcmm &amp; tech in “mcmm_corners_modes.tcl” are valid ***</p>
+
+        <h3>9.3 Sanity checks</h3>
+        <p><strong>9.3.1 check_legality:</strong> Validates every standard cell is placed legally (aligned, no overlaps, voltage boundaries respected).</p>
+
+        <h3>9.4 Reports</h3>
+        <ul>
+            <li><strong>9.4.1 report_constraints -all_violators -max_transition:</strong> Identifies slow slew rates.</li>
+            <li><strong>9.4.2 report_constraints -all_violators -max_capacitance:</strong> Identifies cells driving loads exceeding characterization limits.</li>
+        </ul>
+
+        <h3>9.5 Fixes for max trans</h3>
+        <ul>
+            <li>Upsize cells (Not Recommended manually)</li>
+            <li>Insert Buffers (Not Recommended manually before CTS)</li>
+            <li><strong>Magnet placement:</strong> Pulls logically connected cells physically closer.</li>
+            <li><strong>Create_bounds:</strong> Forces critical cells into a tightly restricted physical box.</li>
+            <li><strong>Refine_placement:</strong> Gently shifts surrounding cells to legalize new constraints.</li>
+            <li><strong>Path grouping:</strong> Assigns higher priority to failing paths.</li>
+        </ul>
+
+        <h3>9.6 Fixes for max cap</h3>
+        <ul>
+            <li>Upsize cells / Insert Buffers</li>
+            <li><strong>Split load:</strong> Insert parallel buffers to halve the capacitance seen by drivers.</li>
+            <li><strong>Cloning:</strong> Creates an exact duplicate of the struggling logic cell to share the fanout.</li>
+        </ul>
+
+        <h2 id="ch10">Chapter 10: Clock Tree Synthesis</h2>
+        <h3>10.1 Type of CTS used - Fish Bone</h3>
+        <p>A Fishbone (or Spine) Clock Routing topology minimizes On-Chip Variation (OCV) and provides extremely low, predictable skew.</p>
+
+        <h3>10.2 source ./scripts/cts_script.tcl</h3>
+        <ul>
+            <li><strong>NDR Setup:</strong> Applies double-width/double-spacing rules to shield against crosstalk.</li>
+            <li><strong>Clock Constraints:</strong> Target skews are corner-specific.</li>
+            <li><strong>CRPR Validation:</strong> Enabled to remove artificial penalties.</li>
+            <li><strong>Level Shifter Insertion:</strong> Exactly 2 level shifters are manually inserted before building the tree to guarantee electrical integrity and prevent massive post-tree skew destruction.</li>
+            <li><strong>Execution Stages:</strong> Build, route, and optimize via <code>clock_opt</code>.</li>
+        </ul>
+
+        <h3>10.3 Issues / violations</h3>
+        <ul>
+            <li>Max Skew, Max Insertion Delay, Pulse Width Distortion.</li>
+        </ul>
+
+        <h3>10.4 & 10.5 Fixes</h3>
+        <p>Fix violations via NDR usage, restricted cell lists, or manual guide buffers. Setup fails are fixed via downsizing, cloning, or Useful Skew. Hold fails are fixed purely by inserting delay buffers.</p>
+
+        <h2 id="ch11">Chapter 11: Routing</h2>
+        <h3>11.1 source ./scripts/route.tcl</h3>
+        <p>Operates in Global Routing, Track Assignment, and Detailed Routing phases.</p>
+
+        <h3>11.2 Sanity checks & 11.3 Reports</h3>
+        <p>Run <code>check_design -checks pre_route_stage</code> and <code>check_routability</code>.</p>
+
+        <h3>11.4 Antenna Rule</h3>
+        <p>Fixed via Layer Hopping or Antenna Diodes to prevent static charge blowout during manufacturing.</p>
+
+        <h2 id="ch12">Chapter 12: Signoff</h2>
+        <h3>12.1 source ./scripts/signoff_script.tcl</h3>
+        <ul>
+            <li><strong>StarRC:</strong> Parasitic Extraction (RC).</li>
+            <li><strong>PrimeTime:</strong> Static Timing Analysis.</li>
+            <li><strong>IC Validator:</strong> Physical Verification (DRC/LVS).</li>
+            <li><strong>RedHawk/Voltus:</strong> IR Drop / EM Signoff.</li>
+        </ul>
+
+        <h2 id="ch13">Chapter 13: Advance IR drop</h2>
+        <h3>13.1 Introduction</h3>
+        <p>Analyzes massive current surges causing the local supply voltage to sag according to Ohm’s Law ($V_{drop} = I \times R$).</p>
+
+        <h3>13.2 Exporting the Design</h3>
+<pre class="code-block"><code># Export the physical layout
+write_def -version 5.8 -routing -all_blocks reports/crypto_top.def
+
+# Export the parasitic RC data
+write_parasitics -format SPEF -output reports/crypto_top.spef
+</code></pre>
+
+        <h3>13.6 Fixes for IR-Drop</h3>
+        <p>Adding Decap Cells, Thickening Local Straps, and Spreading the Logic.</p>
+
+        <h2 id="ch14">Chapter 14: Hard Macro Conversion</h2>
+        <p>Hardening seals the internal standard cells into a single black-box component for SoC integration.</p>
+<pre class="code-block"><code># Open routed block
+open_block crypto_top_routed
+
+# Create abstract view
+create_abstract -read_only
+</code></pre>
+        <p>Deliverables include GDSII, LEF, Timing Models (.lib/.db), Verilog Shell, and UPF.</p>
+
+        <hr>
+
+        <h2 id="appA">Appendix A: 50 General Physical Design Interview Scenarios</h2>
+        
+        <h3 id="appA-sec1">Section 1: Floorplanning & Power Planning</h3>
+        <div class="scenario">
+            <p><strong>1. Scenario:</strong> You place a large memory macro right in the dead center of the core area. What happens to the design?</p>
+            <p><strong>Answer:</strong> It acts like a giant wall. Data trying to travel from the left side of the chip to the right side must take a long detour around the macro. This creates very long wires, bad timing and routing traffic jams.</p>
+        </div>
+        <div class="scenario">
+            <p><strong>2. Scenario:</strong> You put a macro touching the absolute edge of the core boundary. What is the issue?</p>
+            <p><strong>Answer:</strong> The router cannot access the pins on the edge side of the macro. You must leave a small gap between the macro and the core boundary for wires to travel through.</p>
+        </div>
+        <div class="scenario">
+            <p><strong>3. Scenario:</strong> You forgot to add Tap cells to your floorplan. What will happen when the chip turns on?</p>
+            <p><strong>Answer:</strong> Tap cells connect the base of the silicon to power and ground. Without them, a sudden voltage spike will create a short-circuit inside the silicon (called Latch-up), which permanently burns the chip.</p>
+        </div>
+        
+		<div class="scenario">
+			<p><strong>4. Scenario:</strong> You decided to use huge, thick metal straps for the entire power grid to make sure there is no voltage drop. What is the negative side effect?</p>
+			<p><strong>Answer:</strong> Power straps take up metal routing tracks. If you use too much metal for power, there won’t be enough empty space left for the router to connect the actual signal wires, leading to a blocked design.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>5. Scenario:</strong> You did not put enough power straps. What happens?</p>
+			<p><strong>Answer:</strong> The resistance of the power grid goes up. When many cells turn on at once, the voltage drops (IR Drop). If the cells don't get full voltage, they switch slowly and timing fails.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>6. Scenario:</strong> Why do we put Endcap (Boundary) cells at the end of every standard cell row?</p>
+			<p><strong>Answer:</strong> During manufacturing, the edges of the cell rows can get damaged or stressed. Endcap cells are "dummy" cells with no logic inside. They sit on the edges to take the damage and protect the real logic gates inside the row.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>7. Scenario:</strong> You placed all your high-speed, power-hungry macros in the top-right corner of the chip. Why is this bad?</p>
+			<p><strong>Answer:</strong> This creates a "thermal hotspot." All the heat is trapped in one small area, which can slow down the transistors or physically damage the chip. Macros should be spread out evenly if possible.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>8. Scenario:</strong> What happens if you do not add a routing blockage over a hard macro?</p>
+			<p><strong>Answer:</strong> The tool might try to route standard signal wires straight over the macro and drop vias into it. This will short-circuit the internal wiring of the macro.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>9. Scenario:</strong> The input ports (pins) are placed on the top of the chip, but the logic they connect to is placed at the bottom. What is the result?</p>
+			<p><strong>Answer:</strong> The tool has to draw a massive wire across the whole chip. This creates huge wire delay and setup timing violations right from the start.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>10. Scenario:</strong> You forgot to connect VSS (Ground) to a macro block. What happens?</p>
+			<p><strong>Answer:</strong> The macro will not turn on. Electricity needs a complete circle (from Power to Ground) to flow.</p>
+		</div>
+		
+        <h3 id="appA-sec2">Section 2: Placement & Congestion</h3>
+
+		<div class="scenario">
+			<p><strong>11. Scenario:</strong> The tool placed 50,000 cells in one tiny corner of the chip. What is this called and why is it bad?</p>
+			<p><strong>Answer:</strong> This is called local congestion. The router will fail because there are not enough metal tracks in that tiny area to connect all those cells.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>12. Scenario:</strong> How do you fix a heavily congested spot in placement?</p>
+			<p><strong>Answer:</strong> You use "Placement Blockages" or "Cell Padding" (adding invisible empty space around cells). This forces the tool to spread the cells out into wider areas.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>13. Scenario:</strong> A wire is too long, causing the signal to travel very slowly. The tool reports a "Max Transition" violation. How do you fix it?</p>
+			<p><strong>Answer:</strong> You can cut the long wire in half by inserting a buffer in the middle. You can also upsize the driving cell so it pushes the signal harder.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>14. Scenario:</strong> One small cell is trying to drive 100 other cells. The tool reports a "Max Capacitance" violation. How do you fix it?</p>
+			<p><strong>Answer:</strong> You can "clone" the driver. You make an exact copy of the driving cell and let the first cell drive 50 and the cloned cell drive the other 50.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>15. Scenario:</strong> Two cells that talk directly to each other are placed very far apart by the tool. How do you force them together?</p>
+			<p><strong>Answer:</strong> You can use "Bounds" to lock them into the same small box, or define them as a "Magnet" so they pull towards each other.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>16. Scenario:</strong> Your standard cell utilization is 90% right after placement. Is this good?</p>
+			<p><strong>Answer:</strong> No, it is too high. The tool needs empty space to add buffers during clock building and routing. If you start at 90%, the chip will be completely full and fail later. Target 70-75% to start.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>17. Scenario:</strong> You fix all your timing violations by replacing small cells with huge, high-drive cells. What is the negative side effect?</p>
+			<p><strong>Answer:</strong> High-drive cells take up more physical space (causing congestion) and they leak much more power.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>18. Scenario:</strong> Why is it bad if the tool places flip-flops perfectly in a straight line?</p>
+			<p><strong>Answer:</strong> If they are in a straight line, they will all draw power from the exact same local power strap at the exact same time when the clock hits. This creates a massive localized voltage drop.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>19. Scenario:</strong> You have a Max Transition violation, but you cannot insert a buffer because there is no physical space left. What else can you do?</p>
+			<p><strong>Answer:</strong> Change the driving cell to a Low-VT (LVT) cell. LVT cells switch much faster without needing to be physically bigger.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>20. Scenario:</strong> What is Scan Reordering and why do we do it during placement?</p>
+			<p><strong>Answer:</strong> Scan chains connect all flip-flops for testing. If connected in random order, the wires will cross back and forth across the chip, causing huge congestion. Reordering connects them based on their physical placement, keeping the wires short.</p>
+		</div>
+		
+		<h3 id="appA-sec3">Section 3: Clock Tree Synthesis (CTS)</h3>
+
+		<div class="scenario">
+			<p><strong>21. Scenario:</strong> The clock takes 5ns to travel from the clock port to the flip-flops. This is called High Insertion Delay. Why is it bad?</p>
+			<p><strong>Answer:</strong> The longer the clock travels through buffers, the more sensitive it is to temperature and voltage changes on the chip. This makes timing very unpredictable.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>22. Scenario:</strong> The clock reaches Flop A at 1ns, but reaches Flop B at 2ns. What is this called and what does it cause?</p>
+			<p><strong>Answer:</strong> This is called Clock Skew. It is very dangerous because it can cause Hold timing violations (data races past the clock).</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>23. Scenario:</strong> Why do we use "Double Spacing" rules when routing clock nets?</p>
+			<p><strong>Answer:</strong> Clocks toggle constantly. If a data wire is routed too close, the clock will create noise (crosstalk) on the data wire. Double spacing keeps them safely apart.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>24. Scenario:</strong> Why do we use special "Clock Buffers" instead of normal "Logic Buffers" to build the tree?</p>
+			<p><strong>Answer:</strong> Normal buffers might have a fast rise time but a slow fall time. Clock buffers are built to be perfectly symmetrical, so the clock wave stays perfectly square as it travels.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>25. Scenario:</strong> The router put the main clock wires on Metal 1 and Metal 2. Why is this a mistake?</p>
+			<p><strong>Answer:</strong> Lower metals are very thin and have high resistance. The clock is the most important signal; it must be routed on thick, upper metals (like M5 or M6) to travel fast.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>26. Scenario:</strong> What does an ICG (Integrated Clock Gating) cell do?</p>
+			<p><strong>Answer:</strong> It acts like an on/off switch for the clock. If a block of logic is not being used, the ICG shuts off the clock to that block to save power.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>27. Scenario:</strong> An ICG cell is placed very far away from the flip-flops it controls. What is the risk?</p>
+			<p><strong>Answer:</strong> The "enable" signal telling the clock to turn on might arrive too late, missing the clock edge entirely.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>28. Scenario:</strong> Why do we wait until after CTS to fix Hold violations?</p>
+			<p><strong>Answer:</strong> Hold timing depends entirely on when the clock arrives. Before CTS, the clock is "ideal" (fake zero delay). If you add buffers to fix Hold early, you will be fixing fake numbers and wasting space.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>29. Scenario:</strong> What is "Useful Skew"?</p>
+			<p><strong>Answer:</strong> It is a trick to fix Setup timing. If data is arriving late to a flip-flop, you intentionally delay the clock going to that flop. This gives the data extra time to get there.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>30. Scenario:</strong> You used Useful Skew to delay the clock to Flop B. But Flop B sends data to Flop C. What is the new problem?</p>
+			<p><strong>Answer:</strong> Because Flop B's clock is now late, it launches its data late. This might create a new Setup violation at Flop C.</p>
+		</div>
+
+		<h3 id="appA-sec4">Section 4: Routing & Design Rule Checks (DRC)</h3>
+
+		<div class="scenario">
+			<p><strong>31. Scenario:</strong> What is an Antenna Violation?</p>
+			<p><strong>Answer:</strong> During manufacturing, metal is etched using plasma. Long metal wires act like antennas and collect static electricity. If the wire connects to a sensitive transistor gate, the spark will burn the gate and destroy it.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>32. Scenario:</strong> How does the router fix an Antenna Violation?</p>
+			<p><strong>Answer:</strong> It uses "Layer Hopping" (breaking the wire and jumping to a higher metal layer to stop the charge from building up) or it inserts an "Antenna Diode" to safely drain the electricity into the ground.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>33. Scenario:</strong> Two wires are routed perfectly parallel and very close together for a long distance. What happens?</p>
+			<p><strong>Answer:</strong> They act like a capacitor. If one wire switches, it can slow down or speed up the signal on the other wire. This is called Crosstalk Delay.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>34. Scenario:</strong> How do you fix Crosstalk Delay?</p>
+			<p><strong>Answer:</strong> Move the wires further apart (increase spacing), upsize the driver to overpower the noise, or put a grounded metal wire between them to act as a shield.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>35. Scenario:</strong> The router leaves an "Open Net" (a wire that didn't connect). Why does this happen?</p>
+			<p><strong>Answer:</strong> The destination pin might be blocked by other wires, or the routing channel is 100% full and there are no empty tracks left to use.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>36. Scenario:</strong> Why do we force horizontal routing on Metal 3 and vertical routing on Metal 4?</p>
+			<p><strong>Answer:</strong> This is called preferred routing direction. It creates a grid. If we allowed wires to go any direction on any layer, they would block each other constantly and cause massive congestion.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>37. Scenario:</strong> A single via is connecting a very important, high-current wire. What is the risk?</p>
+			<p><strong>Answer:</strong> Vias have high resistance. A single via might fail or melt. High-current wires should use "Double Vias" (two vias side-by-side) for safety.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>38. Scenario:</strong> What is Electromigration (EM)?</p>
+			<p><strong>Answer:</strong> When too much current flows through a thin wire for a long time, the electricity literally pushes the metal atoms out of place. Eventually, the wire breaks or shorts out.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>39. Scenario:</strong> How do you fix an EM violation?</p>
+			<p><strong>Answer:</strong> Make the metal wire wider, or route the signal using multiple metal layers at the same time to spread the current out.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>40. Scenario:</strong> The tool reports a "Short" violation. What does this mean?</p>
+			<p><strong>Answer:</strong> Two completely different signals were routed so close together that their metal shapes are physically touching. This ruins both signals.</p>
+		</div>
+
+		<h3 id="appA-sec5">Section 5: Timing Closure</h3>
+
+		<div class="scenario">
+			<p><strong>41. Scenario:</strong> A path has a Setup violation. What is the fastest way to fix it without touching the wire?</p>
+			<p><strong>Answer:</strong> Swap the cells on the path from High-VT (HVT) or Regular-VT (RVT) to Low-VT (LVT). LVT cells process data much faster.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>42. Scenario:</strong> If LVT cells are so fast, why don't we build the whole chip out of them?</p>
+			<p><strong>Answer:</strong> LVT cells have massive "leakage power." They waste a lot of electricity even when the chip is just sitting idle doing nothing.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>43. Scenario:</strong> A path has a Hold violation (data is moving too fast and racing past the clock). How do you fix it?</p>
+			<p><strong>Answer:</strong> You insert delay buffers into the data path. This acts like a speed bump, slowing the data down so it arrives safely after the clock edge.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>44. Scenario:</strong> Why does adding buffers fix Hold, but not break the clock?</p>
+			<p><strong>Answer:</strong> Because you are adding the buffers to the data wire, not the clock wire.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>45. Scenario:</strong> A single path has both a Setup violation AND a Hold violation at the same time. Which one do you fix first?</p>
+			<p><strong>Answer:</strong> Always fix Setup first. You fix Setup by making the path faster. Then, you fix Hold by adding a delay buffer at the very end of the path where it won't hurt the Setup time you just fixed.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>46. Scenario:</strong> What is a False Path?</p>
+			<p><strong>Answer:</strong> It is a physical wire connection that exists, but data never actually travels through it during normal operation (like a reset signal that only happens once). We tell the tool to ignore it so it doesn't waste time trying to optimize it.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>47. Scenario:</strong> What is a Multi-Cycle Path?</p>
+			<p><strong>Answer:</strong> Some calculations are too big to finish in one clock cycle. We tell the tool "Multi-Cycle Path 2", which means the data is allowed to take two full clock pulses to reach the end.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>48. Scenario:</strong> Setup timing is failing mostly at the "Slow" temperature corner (like 125°C). Why does heat cause Setup failures?</p>
+			<p><strong>Answer:</strong> Heat increases the resistance in the silicon and metal. High resistance means signals travel slower, causing them to arrive late (Setup failure).</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>49. Scenario:</strong> Hold timing is failing mostly at the "Fast" temperature corner (like -40°C). Why does cold cause Hold failures?</p>
+			<p><strong>Answer:</strong> Cold temperatures make transistors switch incredibly fast. The data finishes processing so quickly that it crashes into the next flip-flop before the clock is ready (Hold failure).</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>50. Scenario:</strong> Your Setup margin is exactly 0.00ns (perfectly met). You have a Hold violation. If you add a delay buffer to fix Hold, it will slow the path down and cause a Setup violation. What is a smart fix?</p>
+			<p><strong>Answer:</strong> Instead of adding a new buffer, look at the driving cell. If you downsize the driving cell slightly, it will drive the signal a tiny bit slower. This might fix the Hold violation without adding enough delay to break the Setup timing.</p>
+		</div>
+		
+		<h3 id="appA-sec6">Section 6: Advanced Timing & On-Chip Variation (STA)</h3>
+
+		<div class="scenario">
+			<p><strong>51. Scenario:</strong> A single path has a massive Setup violation. You check the layout and the physical wire is extremely short. How is a Setup violation even possible on a short wire?</p>
+			<p><strong>Answer:</strong> Setup depends on total delay, not just wire length. If the wire is short, the delay is coming from the cells. The driving cell likely has a massive fanout (trying to drive 50 other gates) or is heavily under-sized.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>52. Scenario:</strong> The tool reports a Hold violation on a path. You look at the clock tree and realize the launch flip-flop and capture flip-flop share the exact same clock wire for 90% of their journey. Why is the tool penalizing you for clock skew?</p>
+			<p><strong>Answer:</strong> You forgot to enable CRPR (Clock Reconvergence Pessimism Removal). Because of On-Chip Variation (OCV), the timing engine assumes the worst case: it artificially slows down the launch clock and speeds up the capture clock. CRPR tells the tool, "Hey, this is the exact same physical wire, it can't be fast and slow at the same time," and removes the fake penalty.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>53. Scenario:</strong> Why does temperature inversion happen at advanced nodes (like 16nm and below)? Why does the chip sometimes get slower at -40°C?</p>
+			<p><strong>Answer:</strong> In older nodes, cold temperatures always meant less resistance and faster transistors. However, at modern nodes, the threshold voltage ($V_{th}$) of the transistor is highly sensitive. At cold temperatures, $V_{th}$ increases. If you are running the chip at a very low supply voltage (like 0.75V), that higher $V_{th}$ chokes the transistor, drastically reducing the drive current ($I_{ds}$) and slowing the cell down.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>54. Scenario:</strong> You have a Setup margin of exactly 0.00ns. You discover a Hold violation of 2ns on the exact same path. Can you fix this by just adding delay buffers?</p>
+			<p><strong>Answer:</strong> No. If you add 2ns of delay buffers to fix Hold, you will instantly create a 2ns Setup violation, bouncing back and forth forever. This means your clock skew is fundamentally broken. You must fix this architecturally by pulling the clock back on the capture flop (Useful Skew) or fixing the clock tree design.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>55. Scenario:</strong> You have a data signal crossing from a 500MHz clock domain to a completely asynchronous 100MHz clock domain. PrimeTime reports a Setup violation. How do you fix the timing?</p>
+			<p><strong>Answer:</strong> You don't. This is a trick question. Asynchronous domains have clocks that drift constantly relative to each other; they will always violate setup/hold eventually. You must declare this a False Path in STA and use a structural synchronizer (like a 2-stage flip-flop synchronizer or a FIFO) in the RTL to handle the data safely.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>56. Scenario:</strong> What is "Time Borrowing" and which component allows it?</p>
+			<p><strong>Answer:</strong> Flip-flops have a hard edge; data must arrive before the clock hits. Latches are transparent for half the clock cycle. If data arrives a little late to a latch, it doesn't fail; it just flows through and "borrows" time from the next logic stage. This is highly useful for smoothing out uneven logic paths.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>57. Scenario:</strong> You see a Timing Path where the Required Time is earlier than the Launch Time. What does this mean?</p>
+			<p><strong>Answer:</strong> This is a Half-Cycle Path. The launch flop is triggered on the rising edge of the clock, but the capture flop is triggered on the falling edge. The data only has half a clock cycle to arrive, cutting your timing margin in half.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>58. Scenario:</strong> Why do we derate the launch path "late" (slower) for Setup analysis, but "early" (faster) for Hold analysis?</p>
+			<p><strong>Answer:</strong> STA must always prove the absolute worst-case scenario. For Setup, the worst case is if the data launches extremely late and struggles to reach the end. For Hold, the worst case is if the data launches extremely early and races past the clock too fast.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>59. Scenario:</strong> Why is "Useful Skew" dangerous in a design with very high On-Chip Variation (OCV)?</p>
+			<p><strong>Answer:</strong> Useful Skew intentionally misaligns the clock to give data more time. However, OCV means clock delays shift randomly due to manufacturing differences. If you intentionally push the clock to the absolute edge to fix timing, a slight OCV shift in the real silicon will instantly push it over the edge and break the chip.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>60. Scenario:</strong> You have a Setup violation on a path. You swap the driving cell for an Ultra-High Drive cell to push the signal faster. The Setup violation gets worse. Why?</p>
+			<p><strong>Answer:</strong> Ultra-High Drive cells are physically massive. They have a huge input capacitance (pin load). By upgrading the cell, you sped up the current net, but you severely overloaded the previous cell driving it, creating a worse delay upstream.</p>
+		</div>
+
+
+		<h3 id="appA-sec7">Section 7: Advanced Clock Tree Synthesis (CTS)</h3>
+
+		<div class="scenario">
+			<p><strong>61. Scenario:</strong> Should a Clock Gating Cell (ICG) be placed closer to the main Clock Root, or closer to the Flip-Flops it controls?</p>
+			<p><strong>Answer:</strong> It must be placed closer to the Flip-Flops. The entire point of an ICG is to save power by turning off the clock wire. If you place it near the root, you save power on the whole branch. However, the "Enable" signal driving the ICG usually comes from local logic. If the ICG is far away, the Enable signal will arrive late, missing the clock edge and causing a glitch.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>62. Scenario:</strong> Why do some high-performance chips (like CPUs and Crypto Cores) use a "Clock Mesh" instead of a "Clock Tree"?</p>
+			<p><strong>Answer:</strong> A tree branches out, meaning the end points can have high skew due to OCV. A Clock Mesh literally shorts all the final clock branches together into a giant metal grid across the chip. This guarantees near-zero skew everywhere and extreme stability, but it burns a massive amount of dynamic power.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>63. Scenario:</strong> You built a clock tree with perfect 0.00ns skew between all flops. However, the Insertion Delay (latency from root to flop) is a massive 8ns. Is this a good clock tree?</p>
+			<p><strong>Answer:</strong> No, it is terrible. A massive insertion delay means the clock passes through dozens of buffers. Because of OCV, every buffer adds a percentage of random delay variation. An 8ns deep tree will have wild, unpredictable skew in actual physical silicon due to temperature and voltage fluctuations.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>64. Scenario:</strong> Does Global Skew matter more, or does Local Skew matter more?</p>
+			<p><strong>Answer:</strong> Local Skew matters much more. If Flop A and Flop Z are on opposite sides of the chip and never talk to each other, it doesn't matter if their clocks are skewed by 1ns. But if Flop A talks directly to Flop B (local), even a 0.1ns skew can cause a fatal Hold violation.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>65. Scenario:</strong> What is the difference between Clock Skew and Clock Jitter?</p>
+			<p><strong>Answer:</strong> Skew is spatial (physical). It is the difference in arrival time between two different physical locations on the chip. Jitter is temporal (time). It is the fluctuation of the clock period at the same location from cycle to cycle, caused by the PLL (Phase Locked Loop) or power supply noise.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>66. Scenario:</strong> Why do some designers prefer building clock trees entirely out of Clock Inverters instead of Clock Buffers?</p>
+			<p><strong>Answer:</strong> A buffer is just two inverters internally. It is difficult to make a PMOS and NMOS exactly equal, so buffers often have unequal rise and fall times, degrading the clock pulse width. By using single inverters, every rising edge becomes a falling edge at the next stage, naturally canceling out the rise/fall asymmetry.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>67. Scenario:</strong> You applied "Double Spacing" to your clock nets to prevent crosstalk. At what physical point must you drop the rule and return to normal spacing?</p>
+			<p><strong>Answer:</strong> You must drop the rule right before the leaf level (the pins of the flip-flops). Flip-flop pins are packed tightly at the standard cell level. If you force double-spacing all the way into the pin, the router will fail to connect them because there isn't enough physical room.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>68. Scenario:</strong> You run CTS. Afterward, your Hold violations explode from 0 to 5,000. Why did CTS cause this?</p>
+			<p><strong>Answer:</strong> Before CTS, the clock arrived at exactly 0.00ns for every flop (ideal clock). CTS builds real wires, introducing Clock Skew. If the clock arrives at the capture flop even a fraction of a nanosecond before the launch flop, the data easily races past the clock, causing thousands of hold failures.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>69. Scenario:</strong> You route a shield wire next to a critical clock net to block crosstalk. Should you connect the shield to VDD (Power) or VSS (Ground)?</p>
+			<p><strong>Answer:</strong> Always VSS (Ground). VSS is the universal quiet reference point. VDD is full of dynamic voltage drops and switching noise. Shielding with VDD would inject power noise directly into your clock line.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>70. Scenario:</strong> How do you fix a Max Transition violation on a High-Fanout Reset net?</p>
+			<p><strong>Answer:</strong> You cannot just upsize the driver because driving 10,000 flops will overload any cell. You must build a "Reset Tree" (just like a clock tree) by cloning buffers and distributing the load symmetrically.</p>
+		</div>
+
+
+		<h3 id="appA-sec8">Section 8: Multi-Voltage, UPF, & Power Intent</h3>
+
+		<div class="scenario">
+			<p><strong>71. Scenario:</strong> A standard cell in a 0.0V (Shut Down) domain sends a signal to a cell in a 1.0V (Always On) domain. You forgot to add an Isolation Cell. What happens?</p>
+			<p><strong>Answer:</strong> When the first domain shuts down, its output floats (it becomes neither 1 nor 0, but an unpredictable middle voltage). The receiving cell in the 1.0V domain sees this floating input, which partially turns on both its NMOS and PMOS transistors. This creates a direct short to ground (Crowbar Current), burning out the 1.0V domain.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>72. Scenario:</strong> A signal goes from a 0.75V domain to a 0.95V domain. Where exactly must the Low-to-High Level Shifter be physically placed?</p>
+			<p><strong>Answer:</strong> It must be placed inside the 0.95V domain. A Level Shifter needs access to the higher voltage supply (0.95V) to pull the signal up to the new level. If placed in the 0.75V domain, it wouldn't have access to the required high-voltage rail.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>73. Scenario:</strong> What is a Retention Flip-Flop?</p>
+			<p><strong>Answer:</strong> When a power domain is shut off to save battery, all flip-flops lose their memory. A Retention Flop contains a tiny "balloon" latch that runs on a separate, always-on backup power supply. Before shut-off, it saves the data and when power returns, it restores the state immediately without needing a full system reboot.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>74. Scenario:</strong> You placed an Always-On (AON) buffer inside a domain that turns completely off. How does it stay alive?</p>
+			<p><strong>Answer:</strong> AON cells require a secondary, continuous power pin (often called VDD_Backup). The router must physically draw a special power wire through the shutdown domain just to feed this specific cell.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>75. Scenario:</strong> Domain A and Domain B both operate at exactly 0.95V. However, Domain A is controlled by Power Switch A and Domain B is controlled by Power Switch B. Do you need Level Shifters? Do you need Isolation Cells?</p>
+			<p><strong>Answer:</strong> You do not need Level Shifters because the voltages are identical. However, you absolutely need Isolation Cells. Since they have different switches, Domain A could be turned off while Domain B is awake, creating the floating-input crowbar issue.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>76. Scenario:</strong> What is the difference between Static IR-Drop and Dynamic IR-Drop?</p>
+			<p><strong>Answer:</strong> Static IR-Drop assumes the chip is sitting idle and calculates voltage drop based on constant leakage current. Dynamic IR-Drop uses a real switching simulation (VCD file) to calculate the massive voltage spikes caused when thousands of flip-flops toggle at the exact same nanosecond.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>77. Scenario:</strong> You have empty space in the corner of your floorplan. Should you fill it with Decoupling Capacitors (Decaps) to help your power grid?</p>
+			<p><strong>Answer:</strong> No. Decaps act as local batteries that supply instantaneous current during switching. If they are placed far away in an empty corner, the resistance of the wire connecting them to the active logic defeats their purpose. Decaps must be placed as close to the switching hotspots as possible.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>78. Scenario:</strong> What is "Inrush Current" and how do Power Switches manage it?</p>
+			<p><strong>Answer:</strong> When a sleeping power domain is suddenly turned back on, all the empty wires and cells instantly suck a massive amount of power to charge up. This "inrush" can steal power from the rest of the chip, causing a brownout. Power switches are "daisy-chained" (turned on one by one in a delayed sequence) to slowly charge the domain and prevent grid collapse.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>79. Scenario:</strong> Why does a slow transition (bad slew rate) cause high dynamic power consumption?</p>
+			<p><strong>Answer:</strong> Every CMOS gate has a threshold where it flips from 0 to 1. During that exact middle moment, both the NMOS and PMOS are slightly open, causing a temporary short-circuit current. If the signal transition is very slow, the gate spends more time in that "middle state," burning excess short-circuit power.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>80. Scenario:</strong> You are sizing an MTCMOS Power Switch (Header switch). What is the danger of making it too big? What is the danger of making it too small?</p>
+			<p><strong>Answer:</strong> If the switch is too small, its resistance is too high, causing massive IR-drop across the switch when the block is running. If it is too big, the switch itself will have massive leakage power when turned off, defeating the purpose of shutting the block down in the first place.</p>
+		</div>
+
+
+		<h3 id="appA-sec9">Section 9: Advanced Routing & Physical Verification</h3>
+
+		<div class="scenario">
+			<p><strong>81. Scenario:</strong> Your standard cell utilization is only 40% (plenty of empty space), but the router is failing with massive congestion. Why?</p>
+			<p><strong>Answer:</strong> You likely used high pin-density standard cells or you placed macros in a way that formed a narrow "bottleneck" channel. Even with 60% empty space, if all wires are forced through a tiny physical corridor, the metal tracks will overflow.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>82. Scenario:</strong> An input pin of a logic gate must be permanently tied to logic "1". Why do we use a "Tie-High Cell" instead of just wiring the pin directly to the VDD power rail?</p>
+			<p><strong>Answer:</strong> Connecting the thin gate oxide of a transistor directly to the thick, noisy VDD rail makes it highly vulnerable to ESD and voltage spikes, which will blow the gate. A Tie-High cell contains a resistor-like internal structure to safely deliver the logic "1" without the electrical risk.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>83. Scenario:</strong> What is the exact difference between a Placement "Fence" and a "Region"?</p>
+			<p><strong>Answer:</strong> A Fence is an exclusive hard constraint: specified cells MUST go inside and no other cells are allowed in. A Region is inclusive: specified cells MUST go inside, but if there is leftover room, the tool is allowed to place other random cells in there too.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>84. Scenario:</strong> Net A and Net B are routed side-by-side. Net A is totally quiet (static 0). Net B suddenly switches from 0 to 1. Because of crosstalk capacitance, Net A experiences a "Glitch" and spikes up to 0.4V. Will the chip fail?</p>
+			<p><strong>Answer:</strong> It only fails if 0.4V crosses the threshold voltage of the receiving gate. If the receiver interprets 0.4V as logic "1", it will register a false data point. If the receiving cell has a high threshold (e.g., 0.5V), it will ignore the 0.4V glitch and the chip will survive.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>85. Scenario:</strong> What is the difference between Crosstalk Glitch and Crosstalk Delay?</p>
+			<p><strong>Answer:</strong> Glitch happens when the victim net is sitting perfectly still and the aggressor causes it to bounce. Delay happens when both nets are switching at the exact same time. If they switch in opposite directions, they fight each other and slow the signal down.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>86. Scenario:</strong> What is the difference between a Placement HALO and a Routing Blockage?</p>
+			<p><strong>Answer:</strong> A HALO is drawn around a macro; it stops the tool from placing any standard cells too close to the macro's edge. A Routing Blockage stops the tool from drawing metal wires across that specific area.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>87. Scenario:</strong> The router inserts an Antenna Diode to fix an antenna violation on a long wire. Should the diode be placed near the driving cell, or near the receiving cell?</p>
+			<p><strong>Answer:</strong> Near the receiving cell. The danger of the antenna effect is the static charge blowing out the delicate gate oxide of the receiving transistor. The diode must be as close to that gate as possible to siphon off the charge.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>88. Scenario:</strong> What exactly happens during the "Track Assignment" phase of routing?</p>
+			<p><strong>Answer:</strong> Global Routing divides the chip into grids and plans the rough path. Track Assignment is the middle step: it looks at the rough path and assigns the wire to a specific, continuous physical metal track before detailed routing finishes the exact connections.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>89. Scenario:</strong> Your wires are perfectly connected using single vias. The tool goes back and spends hours swapping them to "Redundant Vias" (double vias). Why waste the space?</p>
+			<p><strong>Answer:</strong> Vias are microscopic holes filled with metal. During manufacturing, a single via can fail. A second via provides redundancy and improves yield.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>90. Scenario:</strong> At advanced nodes (7nm/5nm), standard cells are so small that the router cannot physically drop vias to connect to their pins. How is this solved?</p>
+			<p><strong>Answer:</strong> The foundry provides a predefined "Pin Access" pattern. Placement must align to a strict grid so vias can legally land on allowed access points.</p>
+		</div>
+
+
+		<h3 id="appA-sec10">Section 10: Signoff, Parasitics & Verification</h3>
+
+		<div class="scenario">
+			<p><strong>91. Scenario:</strong> Your design passes STA but fails silicon.</p>
+			<p><strong>Answer:</strong> IR drop or real silicon voltage variation was not modeled.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>92. Scenario:</strong> LVS soft error.</p>
+			<p><strong>Answer:</strong> Electrical connection through substrate or unintended path.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>93. Scenario:</strong> Minimum metal area violation.</p>
+			<p><strong>Answer:</strong> Tiny metal can be removed during CMP process.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>94. Scenario:</strong> EM difference in power vs signal nets.</p>
+			<p><strong>Answer:</strong> Power nets carry DC stress, signals alternate direction.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>95. Scenario:</strong> RC worst corner for setup check.</p>
+			<p><strong>Answer:</strong> Maximum resistance causes worst delay.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>96. Scenario:</strong> Base DRC vs Metal DRC.</p>
+			<p><strong>Answer:</strong> Base = silicon rules, Metal = routing layers rules.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>97. Scenario:</strong> Metal fill insertion.</p>
+			<p><strong>Answer:</strong> Ensures uniform density for CMP polishing.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>98. Scenario:</strong> IR drop causing hold violation.</p>
+			<p><strong>Answer:</strong> Clock skew shifts timing unexpectedly.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>99. Scenario:</strong> Metal fill affecting timing.</p>
+			<p><strong>Answer:</strong> Adds parasitic capacitance, increasing delay.</p>
+		</div>
+
+		<div class="scenario">
+			<p><strong>100. Scenario:</strong> Setup-hold ECO loop.</p>
+			<p><strong>Answer:</strong> Fix using LVT swap, downsizing, or skew adjustment.</p>
+		</div>
+
+    </main>
+
+    <script>
+        // Sidebar Toggle Logic
+        const toggleBtn = document.getElementById('toggleBtn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('expanded');
+        });
+        
+        // Mobile Sidebar handling
+        if (window.innerWidth <= 900) {
+            sidebar.classList.add('hidden');
+            mainContent.classList.add('expanded');
+        }
+    </script>
+</body>
+</html>
