@@ -147,19 +147,26 @@
         /* =========================================
            FIXED: Main Content Padding (No Overlap)
         ========================================= */
-        .content {
-            margin-left: var(--sidebar-width);
-            padding: 4rem 5rem;
-            max-width: 1100px;
-            transition: margin-left 0.3s ease, padding-left 0.3s ease;
-            width: 100%;
-        }
+		.content {
+			margin-left: var(--sidebar-width); /* Keeps space for sidebar */
+			padding: 4rem 5rem;
+			max-width: 1100px;
+			margin-right: auto; /* Pushes content to the right */
+			margin-left: calc(var(--sidebar-width) + auto); /* This is the fix */
+			
+			/* Simplest way to center: */
+			margin-left: auto;
+			margin-right: auto;
+			width: 100%;
+			max-width: 1000px; /* Adjust this width for your preferred reading line length */
+			transition: margin 0.3s ease;
+		}
 
-        .content.expanded {
-            margin-left: 0;
-            /* Extra left padding pushes text far away from the button */
-            padding-left: 6.5rem; 
-        }
+		.content.expanded {
+			margin-left: auto;
+			margin-right: auto;
+			padding-left: 5rem;
+		}
 
         /* Typography */
         h1, h2, h3, h4 {
